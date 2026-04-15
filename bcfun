@@ -1,0 +1,23 @@
+function res = bcfun(ya, yb, tf,x_start,target_y,calc_H)
+
+    res_start=ya(1:13)-x_start; 
+    
+    res_end=yb(2)-target_y;
+
+    r = sqrt(yb(1)^2 + yb(3)^2);
+    
+    % ペナルティ関数の勾配 (dP/dx) の計算
+    if r <= 1
+        dPdx1 = 0;
+        dPdx3 = 0;
+    else
+        dPdx1 = 20* (1 - 1/r) * yb(1);
+        dPdx3 = 20* (1 - 1/r) * yb(3);
+    end
+
+    res_lambda = [yb(14) - dPdx1;yb(16)- dPdx3;yb(17:26)-0];
+    
+    res_tf=calc_H(yb(1:13), yb(14:26));
+
+    res=[res_start; res_end; res_lambda; res_tf];
+end
