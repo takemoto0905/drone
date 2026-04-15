@@ -1,0 +1,9 @@
+function dydtau = odefun(tau, y, tf, calc_dynamics)
+    
+    x_val = y(1:13);
+    lambda_val = y(14:26);
+
+    y_dot = calc_dynamics(x_val, lambda_val);
+    
+    dydtau = tf * y_dot;
+end
