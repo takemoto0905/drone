@@ -1,0 +1,49 @@
+clear;
+setting;
+jacobi;
+dynamics;
+
+tf_guess=100;
+guess_maker;
+
+success_flag=false;
+success_lambdas=[];
+
+for i=1:length(all_guesses)
+%for i=1:100000    
+    lambda_guess=all_guesses(:,i);
+
+    guess_fun = @(tau) [x_start; lambda_guess];
+    solinit = bvpinit(linspace(0, 1, 10), guess_fun, tf_guess);
+    inner_success=true;
+
+    target_y_list = [99.9, 95.0, 80.0, 50.0, 10.0, 0.0]; 
+
+    for current_target = target_y_list
+        try
+            sol = bvp4c(@(tau, y, tf) odefun(tau, y, tf, calc_dynamics), ...
+                        @(ya, yb, tf) bcfun(ya, yb, tf, x_start, current_target, calc_H), ...
+                        solinit);
+                    
+            % エラーが出ずに成功した場合は、解を次の推測値に使い回す (ホモトピー)
+            solinit = bvpinit(sol, [0, 1], sol.parameters);
+            
+        catch
+        % エラー (特異なヤコビアン等) を吐いた場合の処理
+            inner_success = false; 
+            break; % この target_y_list のループを強制終了し、次の i へ
+        end
+    end
+    if inner_success
+        disp('成功！ 最終ターゲットまで到達しました。');
+        success_lambdas=[success_lambdas,lambda_guess];
+        success_flag=true;
+    end
+end
+
+if ~success_flag
+    disp('全滅や');
+else
+    disp('成功した初期値');
+    disp(success_lambdas);
+end
