@@ -1,0 +1,17 @@
+%ハミルトニアンのjacobi行列導出→各自の最適制御関数決定。
+
+p = sym('p', [3 1], 'real');
+v = sym('v', [3 1], 'real');
+q = sym('q', [4 1], 'real');
+omega = sym('omega', [3 1], 'real');
+u = sym('u', [4 1], 'real');
+lambda = sym('lambda', [13 1], 'real');
+
+H=1+(u.'*Q*u)/2+lambda.'*[v;sqrt(v.'*v)*(quat2rot(q)*[0;0;u(1)])/m-quat2rot(q)*D*(quat2rot(q)')*v/m-[0;0;g];-quat_mult([0;omega],q)/2;I\([u(2);u(3);u(4)]-cross(omega,I*omega))];
+
+x = [p; v; q; omega];
+dH_dx = jacobian(H, x);
+dH_du = jacobian(H, u);
+
+u_st=solve(dH_du.' == 0, u);
+u_opt=[u_st.u1;u_st.u2;u_st.u3;u_st.u4];
