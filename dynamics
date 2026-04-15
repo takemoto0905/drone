@@ -1,0 +1,22 @@
+%ダイナミクスを設定、数値解析で使えるようにmatlabFunction化。
+%'jacobi'の後に使用
+
+dp_dt     = v;
+dv_dt     = (quat2rot(q)*[0;0;u(1)])/m - quat2rot(q)*D*(quat2rot(q)')*norm(v)*v/m - [0;0;g];
+dq_dt     = -quat_mult([0;omega], q) / 2;
+domega_dt = I \ (u(2:4) - cross(omega, I*omega));
+
+x_dot_sym = [dp_dt; dv_dt; dq_dt; domega_dt];
+lambda_dot_sym=-dH_dx.';
+y_dot_sym = [x_dot_sym;lambda_dot_sym];
+
+x_sym = [p; v; q; omega];
+lambda_sym = lambda; 
+
+y_dot_sym_sub = subs(y_dot_sym, u, u_opt);
+
+calc_dynamics = matlabFunction(y_dot_sym_sub, 'Vars', {x_sym, lambda_sym});
+
+H_sub=subs(H,u,u_opt);
+
+calc_H=matlabFunction(H_sub,'Vars',{x_sym, lambda_sym});
