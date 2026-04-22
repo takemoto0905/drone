@@ -7,7 +7,19 @@ omega = sym('omega', [3 1], 'real');
 u = sym('u', [4 1], 'real');
 lambda = sym('lambda', [13 1], 'real');
 
-H=1+(u.'*Q*u)/2+lambda.'*[v;sqrt(v.'*v)*(quat2rot(q)*[0;0;u(1)])/m-quat2rot(q)*D*(quat2rot(q)')*v/m-[0;0;g];-quat_mult([0;omega],q)/2;I\([u(2);u(3);u(4)]-cross(omega,I*omega))];
+%H=1+(u.'*Q*u)/2+lambda.'*[v;sqrt(v.'*v)*(quat2rot(q)*[0;0;u(1)])/m-quat2rot(q)*D*(quat2rot(q)')*v/m-[0;0;g];-quat_mult([0;omega],q)/2;I\([u(2);u(3);u(4)]-cross(omega,I*omega))];
+
+% 'バウムガルデ安定化'を行う場合
+
+% ゲイン k を定義 (例として k=1)
+k = 1; 
+% H の中のクォータニオン微分成分に補正項を追加
+H = 1 + (u.'*Q*u)/2 + lambda.' * [ ...
+    v; ...
+    sqrt(v.'*v)*(quat2rot(q)*[0;0;u(1)])/m - quat2rot(q)*D*(quat2rot(q)')*v/m - [0;0;g]; ...
+    -quat_mult([0;omega],q)/2 + k*(1 - q.'*q)*q; ... % ←ここを変更！
+    I\([u(2);u(3);u(4)] - cross(omega,I*omega)) ...
+];
 
 x = [p; v; q; omega];
 dH_dx = jacobian(H, x);
