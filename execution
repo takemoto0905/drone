@@ -3,47 +3,70 @@ setting;
 jacobi;
 dynamics;
 
-tf_guess=100;
-guess_maker;
+tf_guess = 10; % 妥当性の高い10秒を採用
 
-success_flag=false;
-success_lambdas=[];
+% guess_makerの代わり: 随伴変数は全て0の「無関心状態」からスタート
+all_guesses = zeros(13, 1); 
 
-for i=1:length(all_guesses)
-%for i=1:100000    
-    lambda_guess=all_guesses(:,i);
+success_flag = false;
+success_lambdas = [];
+target_y_list = [99.9, 95.0, 80.0, 50.0, 10.0, 0.0]; 
 
-    guess_fun = @(tau) [x_start; lambda_guess];
+for i = 1:size(all_guesses, 2)
+    lambda_guess = all_guesses(:, i);
+    
+    % 最初のホモトピーターゲット(99.9)に向けて、Y座標だけを動かす推測関数を定義
+    first_target = target_y_list(1);
+    guess_fun = @(tau) custom_guess(tau, x_start, lambda_guess, first_target);
+    
+    % 初期メッシュ(10分割)と推測値を生成
     solinit = bvpinit(linspace(0, 1, 10), guess_fun, tf_guess);
-    inner_success=true;
-
-    target_y_list = [99.9, 95.0, 80.0, 50.0, 10.0, 0.0]; 
-
+    
+    inner_success = true;
+    
     for current_target = target_y_list
         try
+            % bvp4cの実行
             sol = bvp4c(@(tau, y, tf) odefun(tau, y, tf, calc_dynamics), ...
                         @(ya, yb, tf) bcfun(ya, yb, tf, x_start, current_target, calc_H), ...
                         solinit);
                     
-            % エラーが出ずに成功した場合は、解を次の推測値に使い回す (ホモトピー)
+            % エラーが出ずに成功した場合は、その解を次の推測値に使い回す (ホモトピーの神髄)
             solinit = bvpinit(sol, [0, 1], sol.parameters);
             
+            % 進捗がわかるように表示（不要なら消してください）
+            fprintf('Target Y = %.1f 成功 (tf = %.3f)\n', current_target, sol.parameters);
+            
         catch
-        % エラー (特異なヤコビアン等) を吐いた場合の処理
+            % エラー (特異なヤコビアン等) を吐いた場合の処理
             inner_success = false; 
+            fprintf('Target Y = %.1f で計算発散...\n', current_target);
             break; % この target_y_list のループを強制終了し、次の i へ
         end
     end
+    
     if inner_success
         disp('成功！ 最終ターゲットまで到達しました。');
-        success_lambdas=[success_lambdas,lambda_guess];
-        success_flag=true;
+        success_lambdas = [success_lambdas, lambda_guess];
+        success_flag = true;
     end
 end
 
 if ~success_flag
     disp('全滅や');
 else
-    disp('成功した初期値');
+    disp('成功した初期値:');
     disp(success_lambdas);
+end
+
+% =========================================================================
+% ローカル関数: Y座標のみをスタートからターゲットへ線形補間する推測関数
+% =========================================================================
+function y_guess = custom_guess(tau, x_start, lambda_guess, target_y)
+    x_guess = x_start;
+    
+    % Y座標(2番目の要素)だけを、時間tauに応じてターゲットへ向かわせる
+    x_guess(2) = x_start(2) + tau * (target_y - x_start(2));
+    
+    y_guess = [x_guess; lambda_guess];
 end
